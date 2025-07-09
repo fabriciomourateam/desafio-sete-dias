@@ -1,11 +1,18 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Trophy, Target, Droplets, Moon, Dumbbell, Apple } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Trophy, Target, Droplets, Moon, Dumbbell, Apple, LogOut } from 'lucide-react';
+import type { User, Session } from '@supabase/supabase-js';
 
 const Dashboard = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
   const [userPoints, setUserPoints] = useState(2350);
   const [dailyProgress, setDailyProgress] = useState({
     water: 6,
@@ -13,6 +20,7 @@ const Dashboard = () => {
     workout: 1,
     meals: 4
   });
+  const navigate = useNavigate();
 
   const dailyGoals = {
     water: 8,
@@ -28,18 +36,97 @@ const Dashboard = () => {
     { id: 4, title: 'Seguir plano alimentar', points: 120, completed: false, category: 'nutrition' }
   ];
 
+  useEffect(() => {
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (!session?.user) {
+          navigate("/auth");
+        } else {
+          // Fetch user profile
+          setTimeout(() => {
+            fetchUserProfile(session.user.id);
+          }, 0);
+        }
+      }
+    );
+
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (!session?.user) {
+        navigate("/auth");
+      } else {
+        fetchUserProfile(session.user.id);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  const fetchUserProfile = async (userId: string) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
+    
+    if (data) {
+      setUserProfile(data);
+    }
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+  };
+
   const getProgressPercentage = (current: number, goal: number) => {
     return Math.min((current / goal) * 100, 100);
   };
+
+  if (!user) {
+    return null; // Will redirect via useEffect
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-amber-50 p-4">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header with user stats */}
         <div className="text-center py-6">
-          <h1 className="text-4xl font-bold text-neutral-950 mb-2">
-            Desafio 7 Dias
-          </h1>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex-1"></div>
+            <h1 className="text-4xl font-bold text-neutral-950">
+              Desafio 7 Dias
+            </h1>
+            <div className="flex-1 flex justify-end">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleSignOut}
+                className="text-neutral-600 hover:text-neutral-950"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Sair
+              </Button>
+            </div>
+          </div>
+          
+          {userProfile && (
+            <div className="mb-4">
+              <p className="text-lg font-medium text-neutral-700">
+                Olá, {userProfile.name}!
+              </p>
+              <p className="text-sm text-neutral-500">
+                {userProfile.email}
+              </p>
+            </div>
+          )}
+          
           <div className="flex items-center justify-center gap-4">
             <Badge variant="secondary" className="text-lg px-4 py-2 bg-amber-400 text-neutral-950">
               <Trophy className="w-4 h-4 mr-2" />

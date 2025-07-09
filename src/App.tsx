@@ -10,6 +10,7 @@ import Leaderboard from "./pages/Leaderboard";
 import DietPlans from "./pages/DietPlans";
 import WorkoutPlans from "./pages/WorkoutPlans";
 import Profile from "./pages/Profile";
+import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,6 +24,7 @@ const App = () => (
         <div className="pb-20">
           <Routes>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/auth" element={<Auth />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/diet-plans" element={<DietPlans />} />
             <Route path="/workout-plans" element={<WorkoutPlans />} />
